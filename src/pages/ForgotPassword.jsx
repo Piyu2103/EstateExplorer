@@ -2,10 +2,22 @@ import React, { useState } from "react";
 import Key from "../images/key.jpg";
 import { Link } from "react-router-dom";
 import OAuth from "../components/OAuth";
+import { toast } from "react-toastify";
+import { getAuth, sendPasswordResetEmail } from "firebase/auth";
 export default function SignIn() {
   const [email, setEmail] = useState("");
   function onChange(e) {
     setEmail(e?.target?.value)
+  }
+  async function forgotPasswordSubmit(e){
+    e.preventDefault();
+    try {
+      const auth=getAuth();
+      await sendPasswordResetEmail(auth,email);
+      toast.success("Email has been sent!")
+    } catch (error) {
+      toast.error("Email entered is not registered with us")
+    }
   }
   return (
     <section>
@@ -45,6 +57,7 @@ export default function SignIn() {
             </div>
             <button
               type="submit"
+              onClick={forgotPasswordSubmit}
               className="w-full bg-blue-600 text-white px-7 py-3 text-sm font-medium uppercase rounded shadow-md hover:bg-blue-700 transition duration-150 ease-in-out hover:shadow-lg active:bg-blue-800"
             >
               Send Reset Password

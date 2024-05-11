@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import Key from "../images/key.jpg";
 import { AiFillEyeInvisible, AiFillEye } from "react-icons/ai";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import OAuth from "../components/OAuth";
+import { signInWithEmailAndPassword,getAuth } from "firebase/auth";
+import { toast } from "react-toastify";
 export default function SignIn() {
   const [formData, setFormData] = useState({
     email: "",
@@ -10,11 +12,24 @@ export default function SignIn() {
   });
   const [showPassword, setShowPassword] = useState(false);
   const { email, password } = formData;
+  const navigate=useNavigate()
   function onChange(e) {
     setFormData((prevState) => ({
       ...prevState,
       [e.target.id]: e.target.value,
     }));
+  }
+  async function LoginSubmit(e){
+    e.preventDefault();
+    try {
+      const auth=getAuth();
+      const userCredentials=await signInWithEmailAndPassword(auth,email,password)
+      if(userCredentials?.user){
+        navigate("/")
+      }
+    } catch (error) {
+      toast.error("Wrong user credentials");
+    }
   }
   return (
     <section>
@@ -75,6 +90,7 @@ export default function SignIn() {
             </div>
             <button
               type="submit"
+              onClick={LoginSubmit}
               className="w-full bg-blue-600 text-white px-7 py-3 text-sm font-medium uppercase rounded shadow-md hover:bg-blue-700 transition duration-150 ease-in-out hover:shadow-lg active:bg-blue-800"
             >
               Sign In
