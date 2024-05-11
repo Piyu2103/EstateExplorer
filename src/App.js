@@ -6,6 +6,8 @@ import SignUp from "./pages/SignUp";
 import Offers from "./pages/Offers";
 import Profile from "./pages/Profile";
 import Header from "./components/Header";
+import { Slide, ToastContainer } from "react-toastify";
+import 'react-toastify/dist/ReactToastify.css';
 
 function App() {
   return (
@@ -21,6 +23,19 @@ function App() {
         <Route path="/sign-in" element={<SignIn/>} />
       </Routes>
     </Router>
+    <ToastContainer
+    position="bottom-center"
+    autoClose={5000}
+    hideProgressBar={false}
+    newestOnTop
+    closeOnClick
+    rtl={false}
+    pauseOnFocusLoss
+    draggable
+    pauseOnHover
+    theme="dark"
+    transition={Slide}
+    />
     </>
   );
 }

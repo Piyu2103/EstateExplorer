@@ -1,8 +1,12 @@
 import React, { useState } from "react";
 import Key from "../images/key.jpg";
 import { AiFillEyeInvisible, AiFillEye } from "react-icons/ai";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import OAuth from "../components/OAuth";
+import {getAuth,createUserWithEmailAndPassword,updateProfile} from "firebase/auth"
+import {db} from "../Firebase"
+import { serverTimestamp, setDoc,doc } from "firebase/firestore";
+import { toast } from "react-toastify";
 export default function SignIn() {
   const [formData, setFormData] = useState({
     name:"",
@@ -11,11 +15,32 @@ export default function SignIn() {
   });
   const [showPassword, setShowPassword] = useState(false);
   const { email, password,name } = formData;
+  const navigate=useNavigate();
   function onChange(e) {
     setFormData((prevState) => ({
       ...prevState,
       [e.target.id]: e.target.value,
     }));
+  }
+  async function SubmitForm(e){
+    e.preventDefault();
+    try {
+      const auth = getAuth()
+      const userCredential=await createUserWithEmailAndPassword(auth,email,password);
+      updateProfile(auth.currentUser,{
+        displayName:name
+      })
+      const user=userCredential.user
+      const formDateWithoutPassword={...formData}
+      delete formDateWithoutPassword.password
+      formDateWithoutPassword.timestamp=serverTimestamp()
+      await setDoc(doc(db,"users",user.uid),formDateWithoutPassword);
+      toast.success("SignUp was successful")
+      navigate("/");
+    } catch (error) {
+      toast.error("Something Went Wrong with the Registration Details")
+    }
+    
   }
   return (
     <section>
@@ -25,7 +50,7 @@ export default function SignIn() {
           <img src={Key} alt="Key" className="w-full rounded-2xl" />
         </div>
         <div className="w-full md:w-[67%] lg:w-[40%] lg:ml-20">
-          <form>
+          <form onSubmit={SubmitForm}>
           <input
                 className="w-full px-4 py-2 text-xl text-gray-700 bg-white border-gray-300 rounded transition ease-in-out my-6"
                 type="text"
