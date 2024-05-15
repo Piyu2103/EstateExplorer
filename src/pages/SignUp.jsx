@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import Key from "../images/key.jpg";
+import Key from "../assets/images/key.jpg";
 import { AiFillEyeInvisible, AiFillEye } from "react-icons/ai";
 import { Link, useNavigate } from "react-router-dom";
 import OAuth from "../components/OAuth";

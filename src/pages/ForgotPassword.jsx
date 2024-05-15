@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import Key from "../images/key.jpg";
+import Key from "../assets/images/key.jpg";
 import { Link } from "react-router-dom";
 import OAuth from "../components/OAuth";
 import { toast } from "react-toastify";
