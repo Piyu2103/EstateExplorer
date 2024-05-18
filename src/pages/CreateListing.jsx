@@ -1,8 +1,24 @@
 import React, { useState } from "react";
+import { toast } from "react-toastify";
+import Spinner from '../components/Spinner';
+import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+import { getAuth } from 'firebase/auth'
+import {v4 as uuidv4} from "uuid"
+import {  addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { db } from "../Firebase";
+import { useNavigate } from "react-router";
+
+
+
 
 export default function CreateListing() {
-  const [formData, setFormData] = useState({
-    type: "Rent",
+const [geolocationEnabled,setGeolocationEnabled]=useState(true);
+const [isLoading,setIsLoading]=useState(false)
+const [isMoreThan6Images,setIsMoreThan6Images]=useState(false)
+const auth=getAuth();
+const navigate=useNavigate();
+const [formData, setFormData] = useState({
+    type: "rent",
     name: "",
     bedrooms: 1,
     bathrooms: 1,
@@ -10,9 +26,12 @@ export default function CreateListing() {
     furnished: false,
     address: "",
     description: "",
-    offer: true,
+    offer: false,
     regularPrice: 0,
     discountedPrice: 0,
+    latitude:0,
+    longitude:0,
+    images:{}
   });
   const {
     type,
@@ -26,8 +45,162 @@ export default function CreateListing() {
     offer,
     regularPrice,
     discountedPrice,
+    latitude,
+    longitude,
+    images
   } = formData;
-  function onChange() {}
+  function onChange(e) {
+    let boolean = null;
+    if(e.target.value==="true"){
+        boolean=true
+    } 
+    if(e.target.value==="false"){
+        boolean=false;
+    }
+    if (e.target.files) {
+      const files = Array.from(e.target.files);
+      if (files.length > 6) {
+        setIsMoreThan6Images(true)
+        toast.error("Please upload less than 6 images");
+      } else {
+        setFormData((prevState) => ({
+          ...prevState,
+          images: e.target.files,
+        }));
+      }
+    }
+    if(!e.target.files){
+        setFormData((prevState)=>({
+            ...prevState,
+            [e.target.id]:boolean ?? e.target.value
+        }))
+    }
+    
+  }
+  async function onSubmit(e) {
+    e.preventDefault();
+    setIsLoading(true);
+
+    if (isMoreThan6Images) {
+      setIsLoading(false);
+      toast.error("Please upload less than 6 images");
+      return;
+    } else if (+discountedPrice >= +regularPrice) {
+      setIsLoading(false);
+      toast.error("Please enter discounted price less than regular price");
+      return;
+    } else {
+      let geolocation = {};
+      if (geolocationEnabled) {
+        const requestOptions = {
+          method: "GET",
+        };
+        const url = `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(
+          address
+        )}&apiKey=${process.env.REACT_APP_GEO_APIFY_KEY}`;
+        try {
+          const response = await fetch(url, requestOptions);
+          const data = await response.json();
+          if (response.ok) {
+            if (data.features && data.features.length > 0) {
+              const location = data.features[0].properties;
+              geolocation.lat = location.lat;
+              geolocation.long = location.lon;
+            } else {
+              setIsLoading(false);
+              toast.error("Please enter valid Address!");
+              return;
+            }
+          } else {
+            setIsLoading(false);
+            setGeolocationEnabled(false);
+            toast.error("Please enter the longitude and latitude also!");
+            return;
+          }
+        } catch (error) {
+          setIsLoading(false);
+          setGeolocationEnabled(false);
+          toast.error("Please enter the longitude and latitude also!");
+          return;
+        }
+      } else {
+        geolocation.lat = latitude;
+        geolocation.long = longitude;
+      }
+      async function storeImage(image){
+        return new Promise((resolve,reject)=>{
+            const storage = getStorage();
+            const filename=`${auth.currentUser.uid}-${image.name}-${uuidv4()}`
+            const storageRef = ref(storage, filename);
+            const uploadTask = uploadBytesResumable(storageRef, image);
+            uploadTask.on(
+              "state_changed",
+              (snapshot) => {
+                // Observe state change events such as progress, pause, and resume
+                // Get task progress, including the number of bytes uploaded and the total number of bytes to be uploaded
+                const progress =
+                  (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                console.log("Upload is " + progress + "% done");
+                switch (snapshot.state) {
+                  case "paused":
+                    console.log("Upload is paused");
+                    break;
+                  case "running":
+                    console.log("Upload is running");
+                    break;
+                  default:
+                    console.log("Something Went Wrong");
+                    break;
+                }
+              },
+              (error) => {
+                // Handle unsuccessful uploads
+                reject(error)
+              },
+              () => {
+                // Handle successful uploads on complete
+                // For instance, get the download URL: https://firebasestorage.googleapis.com/...
+                getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+                  resolve(downloadURL);
+                });
+              }
+            );
+        })
+      }
+
+      const imgUrls=await Promise.all(
+        [...images].map((image)=>storeImage(image)))
+        .catch((error)=>{
+            setIsLoading(false)
+            toast.error("Images not Uploaded!")
+            return;
+        })
+
+
+        const formDataCopy= {
+            ...formData,
+            imgUrls,
+            geolocation,
+            timestamp:serverTimestamp()
+        };
+
+        delete formDataCopy.images;
+        delete formDataCopy.address;
+        delete formDataCopy.latitude;
+        delete formDataCopy.longitude;
+        !formDataCopy.offer && delete formDataCopy.discountedPrice;
+        const docRef=await addDoc(collection(db,"listings"),formDataCopy)
+        setIsLoading(false)
+        console.log(docRef);
+        toast.success("Successfully created the listing!");
+        navigate(`/category/${formDataCopy?.type}/${docRef?.id}`)
+
+
+    }
+  }
+  if(isLoading){
+    return (<Spinner/>)
+  }
   return (
     <main className="max-w-md px-2 mx-auto">
       <h1 className="text-3xl text-center mt-6 font-bold">Create a Listing</h1>
@@ -40,7 +213,7 @@ export default function CreateListing() {
             value="sale"
             onClick={onChange}
             className={`px-7 py-3 font-medium text-sm uppercase shadow-md rounded hover:shadow-lg focus:shadow-lg active:shadow-lg transition duration-150 ease-in-out w-full mr-3 ${
-              type === "Rent"
+              type === "rent"
                 ? "bg-white text-black"
                 : "bg-slate-600 text-white"
             }`}
@@ -51,8 +224,9 @@ export default function CreateListing() {
             type="button"
             id="type"
             value="rent"
+            onClick={onChange}
             className={`ml-3 px-7 py-3 font-medium text-sm uppercase shadow-md rounded hover:shadow-lg focus:shadow-lg active:shadow-lg transition duration-150 ease-in-out w-full ${
-              type === "Rent"
+              type === "rent"
                 ? "bg-slate-600 text-white"
                 : "bg-white text-black"
             }`}
@@ -69,7 +243,8 @@ export default function CreateListing() {
           className="w-full px-4 py-2 text-xl text-gray-700 bg-white border border-gray-300 rounded transition duration-150 ease-in-out focus:text-gray-700 focus:bg-white focus:border-slate-600 mb-6"
           placeholder="Name"
           maxLength="32"
-          minLength="10"
+          minLength="6"
+          required
         />
         <div className="flex space-x-6 justify-start mb-6">
           <div>
@@ -116,6 +291,7 @@ export default function CreateListing() {
             type="button"
             id="parking"
             value={false}
+            onClick={onChange}
             className={`ml-3 px-7 py-3 font-medium text-sm uppercase shadow-md rounded hover:shadow-lg focus:shadow-lg active:shadow-lg transition duration-150 ease-in-out w-full ${
               !parking ? "bg-slate-600 text-white" : "bg-white text-black"
             }`}
@@ -140,6 +316,7 @@ export default function CreateListing() {
             type="button"
             id="furnished"
             value={false}
+            onClick={onChange}
             className={`ml-3 px-7 py-3 font-medium text-sm uppercase shadow-md rounded hover:shadow-lg focus:shadow-lg active:shadow-lg transition duration-150 ease-in-out w-full ${
               !furnished ? "bg-slate-600 text-white" : "bg-white text-black"
             }`}
@@ -156,8 +333,28 @@ export default function CreateListing() {
           className="w-full px-4 py-2 text-xl text-gray-700 bg-white border border-gray-300 rounded transition duration-150 ease-in-out focus:text-gray-700 focus:bg-white focus:border-slate-600 mb-6"
           placeholder="Address"
           maxLength="80"
-          minLength="30"
+          required
         />
+        {!geolocationEnabled && (
+            <div className="flex space-x-6 justify-start">
+                <div className="w-full">
+                    <p className="text-xl font-semibold">
+                        Latitude
+                    </p>
+                    <input type="number" id="latitude" value={latitude} onChange={onChange} required min="-90" max="90"
+                    className="w-full transition duration-150 ease-in-out px-4 py-2 text-center text-xl text-gray-300 border border-gray-300 bg-white rounded focus:text-gray-700 focus:bg-white focus:border-slate-600 mb-6"
+                    />
+                </div>
+                <div className="w-full">
+                    <p className="text-xl font-semibold">
+                        Longitude
+                    </p>
+                    <input type="number" id="longitude" value={longitude} onChange={onChange} required min="-180" max="180"
+                    className="w-full transition duration-150 ease-in-out px-4 py-2 text-center text-xl text-gray-300 border border-gray-300 bg-white rounded focus:text-gray-700 focus:bg-white focus:border-slate-600 mb-6"
+                    />
+                </div>
+            </div>
+        )}
         <p className="text-xl font-semibold">Description</p>
         <input
           type="text"
@@ -167,7 +364,6 @@ export default function CreateListing() {
           className="w-full px-4 py-2 text-xl text-gray-700 bg-white border border-gray-300 rounded transition duration-150 ease-in-out focus:text-gray-700 focus:bg-white focus:border-slate-600 mb-6"
           placeholder="Description"
           maxLength="80"
-          minLength="30"
         />
         <p className="text-xl font-semibold">Offer</p>
         <div className="flex mb-6">
@@ -186,6 +382,7 @@ export default function CreateListing() {
             type="button"
             id="offer"
             value={false}
+            onClick={onChange}
             className={`ml-3 px-7 py-3 font-medium text-sm uppercase shadow-md rounded hover:shadow-lg focus:shadow-lg active:shadow-lg transition duration-150 ease-in-out w-full ${
               !offer ? "bg-slate-600 text-white" : "bg-white text-black"
             }`}
@@ -209,7 +406,7 @@ export default function CreateListing() {
               min="50"
               required
             />
-            {type === "Rent" ? (
+            {type === "rent" ? (
               <div className="">
                 <p className="text-md w-full whitespace-nowrap">$ / Month</p>
               </div>
@@ -233,7 +430,7 @@ export default function CreateListing() {
                 min="50"
                 required
               />
-              {type === "Rent" ? (
+              {type === "rent" ? (
                 <div className="">
                   <p className="text-md w-full whitespace-nowrap">$ / Month</p>
                 </div>
@@ -255,7 +452,9 @@ export default function CreateListing() {
             focus:bg-white focus:border-slate-600"
           />
         </div>
-        <button type="submit" className="w-full mb-6 px-7 py-3 bg-blue-600 text-white font-medium text-sm uppercase rounded shadow-md hover:bg-blue-700 hover:shadow-lg focus:bg-blue-700 focus:shadow-lg active:bg-blue-800 active:shadow-lg transition duration-150 ease-in-out">
+        <button type="submit"
+        onClick={onSubmit}
+        className="w-full mb-6 px-7 py-3 bg-blue-600 text-white font-medium text-sm uppercase rounded shadow-md hover:bg-blue-700 hover:shadow-lg focus:bg-blue-700 focus:shadow-lg active:bg-blue-800 active:shadow-lg transition duration-150 ease-in-out">
                 Create a Listing
         </button>
       </form>
