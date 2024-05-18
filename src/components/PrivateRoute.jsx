@@ -15,6 +15,5 @@ else
   return (
     loggedIn?<Outlet/>:<Navigate to="/sign-in"/>
     )
- 
     }
 }
