@@ -81,7 +81,12 @@ const [formData, setFormData] = useState({
     e.preventDefault();
     setIsLoading(true);
 
-    if (isMoreThan6Images) {
+    if(name===""||address===""||regularPrice===0||(offer&&discountedPrice===0)||images.length===0){
+      setIsLoading(false);
+      toast.error("Please enter the required information!")
+      return;  
+    }
+    else if (isMoreThan6Images) {
       setIsLoading(false);
       toast.error("Please upload less than 6 images");
       return;
@@ -172,7 +177,7 @@ const [formData, setFormData] = useState({
         [...images].map((image)=>storeImage(image)))
         .catch((error)=>{
             setIsLoading(false)
-            toast.error("Images not Uploaded!")
+            toast.error("Images not Uploaded(Reduce size or Upload only image)!")
             return;
         })
 
@@ -180,22 +185,29 @@ const [formData, setFormData] = useState({
         const formDataCopy= {
             ...formData,
             imgUrls,
+            userRef:auth.currentUser.uid,
             geolocation,
             timestamp:serverTimestamp()
         };
-
         delete formDataCopy.images;
-        delete formDataCopy.address;
         delete formDataCopy.latitude;
         delete formDataCopy.longitude;
         !formDataCopy.offer && delete formDataCopy.discountedPrice;
-        const docRef=await addDoc(collection(db,"listings"),formDataCopy)
-        setIsLoading(false)
-        console.log(docRef);
-        toast.success("Successfully created the listing!");
-        navigate(`/category/${formDataCopy?.type}/${docRef?.id}`)
-
-
+        try {
+          if (imgUrls && geolocation) {
+            const docRef = await addDoc(
+              collection(db, "listings"),
+              formDataCopy
+            );
+            console.log(docRef);
+            toast.success("Successfully created the listing!");
+            navigate(`/category/${formDataCopy?.type}/${docRef?.id}`);
+          }
+        } catch (error) {
+          toast.error("Listing is not created successfully");
+        } finally {
+          setIsLoading(false);
+        }
     }
   }
   if(isLoading){
@@ -204,8 +216,9 @@ const [formData, setFormData] = useState({
   return (
     <main className="max-w-md px-2 mx-auto">
       <h1 className="text-3xl text-center mt-6 font-bold">Create a Listing</h1>
+      <p className="mt-3">'*' is a required field</p>
       <form>
-        <p className="text-xl mt-6 font-semibold">Sell / Rent</p>
+        <p className="text-xl mt-3 font-semibold">Sell / Rent</p>
         <div className="flex">
           <button
             type="button"
@@ -234,7 +247,7 @@ const [formData, setFormData] = useState({
             Rent
           </button>
         </div>
-        <p className="text-xl mt-6 font-semibold">Name</p>
+        <p className="text-xl mt-6 font-semibold">Name *</p>
         <input
           type="text"
           id="name"
@@ -324,7 +337,7 @@ const [formData, setFormData] = useState({
             No
           </button>
         </div>
-        <p className="text-xl mt-6 font-semibold">Address</p>
+        <p className="text-xl mt-6 font-semibold">Address *</p>
         <input
           type="text"
           id="address"
@@ -392,7 +405,7 @@ const [formData, setFormData] = useState({
         </div>
         <div className="mb-6 items-center">
           <div className="flex items-center">
-            <p className="text-xl font-semibold">Regular Price</p>
+            <p className="text-xl font-semibold">Regular Price *</p>
           </div>
           <div className="flex w-full justify-center items-center space-x-6">
             <input
@@ -416,7 +429,7 @@ const [formData, setFormData] = useState({
         {offer && (
           <div className="mb-6 items-center">
             <div className="flex items-center">
-              <p className="text-xl font-semibold">Discounted Price</p>
+              <p className="text-xl font-semibold">Discounted Price *</p>
             </div>
             <div className="flex w-full justify-center items-center space-x-6">
               <input
@@ -439,7 +452,7 @@ const [formData, setFormData] = useState({
           </div>
         )}
         <div className="mb-6">
-          <p className="text-xl font-semibold">Images</p>
+          <p className="text-xl font-semibold">Images *</p>
           <p className="text-gray-600">The first image will be the cover (max 6)</p>
           <input
             type="file"
