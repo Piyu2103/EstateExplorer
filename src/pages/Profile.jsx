@@ -98,9 +98,6 @@ export default function Profile() {
     fetchUserListings();
   },[auth.currentUser.uid])
 
-  useEffect(()=>{
-    console.log(listings,"listings");
-  },[listings])
 
 
   return (

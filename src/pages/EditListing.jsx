@@ -106,8 +106,7 @@ const [formData, setFormData] = useState({
             ...prevState,
             [e.target.id]:boolean ?? e.target.value
         }))
-    }
-    
+    }  
   }
 
 
@@ -115,7 +114,7 @@ const [formData, setFormData] = useState({
     e.preventDefault();
     setIsLoading(true);
 
-    if(name===""||address===""||regularPrice==="0"||(offer&&discountedPrice==="0")||!images.length){
+    if(name===""||address===""||regularPrice==="0"||(offer&&discountedPrice==="0")){
       setIsLoading(false);
       toast.error("Please enter the required information!")
       return;  
@@ -207,28 +206,32 @@ const [formData, setFormData] = useState({
         })
       }
 
-      const imgUrls=await Promise.all(
+      let imgUrls=null;
+
+      if(images?.length){
+      imgUrls=await Promise.all(
         [...images].map((image)=>storeImage(image)))
         .catch((error)=>{
             setIsLoading(false)
             toast.error("Images not Uploaded(Reduce size or Upload only image)!")
             return;
         })
-
-
-        const formDataCopy= {
+      }
+        let formDataCopy= {
             ...formData,
-            imgUrls,
             userRef:auth.currentUser.uid,
             geolocation,
             timestamp:serverTimestamp()
         };
+        if(imgUrls){
+          formDataCopy={...formDataCopy,imgUrls};
+        }
         delete formDataCopy.images;
         delete formDataCopy.latitude;
         delete formDataCopy.longitude;
         !formDataCopy.offer && delete formDataCopy.discountedPrice;
         try {
-          if (imgUrls && geolocation) {
+          if (geolocation) {
             await updateDoc(
               doc(db, "listings",params.listingId),
               formDataCopy
@@ -485,7 +488,7 @@ const [formData, setFormData] = useState({
           </div>
         )}
         <div className="mb-6">
-          <p className="text-xl font-semibold">Images *</p>
+          <p className="text-xl font-semibold">Images </p>
           <p className="text-gray-600">The first image will be the cover (max 6)</p>
           <input
             type="file"
