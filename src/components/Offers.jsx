@@ -41,7 +41,7 @@ export default function Offers() {
           <h2 className="px-3 text-2xl mt-6 font-semibold">
                 Recent Offers
           </h2>
-          <Link to="/offer">
+          <Link to="/offers">
             <p className="px-3 text-sm text-blue-600 hover:cursor-pointer hover:text-blue-800 transition duration-150 ease-in-out">
                 Show more offers
             </p>
