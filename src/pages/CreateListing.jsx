@@ -458,7 +458,7 @@ const [formData, setFormData] = useState({
             type="file"
             id="images"
             onChange={onChange}
-            accept=".jpg,.png,.jpeg"
+            accept=".jpg,.png,.jpeg,.avif"
             multiple
             required
             className="w-full px-3 py-1.5 text-gray-700 bg-white border border-gray-300 rounded transition duration-150 ease-in-out 
