@@ -134,7 +134,7 @@ Distributed under the MIT License. See `LICENSE.md` for more information.
 
 Your Name - [Piyush Singhal](https://github.com/Piyu2103) - singhalpiyush21@gmail.com
 
-Project Link: [ZapChat](https://github.com/Piyu2103/EstateExplorer/)
+Project Link: [EstateExplorer](https://github.com/Piyu2103/EstateExplorer/)
 
 
 
