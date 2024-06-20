@@ -3,7 +3,7 @@
 <!-- PROJECT LOGO -->
 <br />
 <p align="center">
-  <a href="https://github.com/Piyu2103/task-manager-api/blob/master/">
+  <a href="https://github.com/Piyu2103/EstateExplorer/blob/main">
     <img src="src/assets/images/logo.png" alt="Logo" width="80" height="80">
   </a>
 
